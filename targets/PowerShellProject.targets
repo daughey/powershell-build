@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <!-- AssemblyName is a standard property that VS projects expect to process - defaulting it to the ModuleName -->
+    <AssemblyName Condition="'$(ModuleName)'!=''">$(ModuleName)</AssemblyName>
+    
+	<!-- Determines whether copy operations may or may not skip unchanged files -->
+	<SkipUnchangedFiles Condition="'$(SkipUnchangedFiles)'==''">true</SkipUnchangedFiles>
+	
+	<!-- Determines whether copy operations should overwrite read-only files or not -->
+    <OverwriteReadOnlyFiles Condition="'$(OverwriteReadOnlyFiles)'==''">true</OverwriteReadOnlyFiles>
+	
+	<!-- Copy operations should retry this number of times -->
+	<CopyRetryCount Condition="'$(CopyRetryCount)'==''">5</CopyRetryCount>
+	
+	<!-- Copy operations should back for this amount of time before trying again -->
+	<CopyRetryDelayMilliseconds Condition="'$(CopyRetryDelayMilliseconds)'==''">1100</CopyRetryDelayMilliseconds>
+	
+	<!-- -->
+	<CreateHardLinksForCopyAdditionalFilesIfPossible Condition="'$(CreateHardLinksForCopyAdditionalFilesIfPossible)'==''">false</CreateHardLinksForCopyAdditionalFilesIfPossible>
+	
+  </PropertyGroup>
+
+  <!-- set up the BeforeBuild hook -->
+  <PropertyGroup>
+    <BeforeBuildDependsOn/>
+  </PropertyGroup>
+
+  <Target Name="BeforeBuild" DependsOnTargets="$(BeforeBuildDependsOn)" />
+
+  <!-- set up the after build hook -->
+  <PropertyGroup>
+    <AfterBuildDependsOn/>
+  </PropertyGroup>
+  
+  <Target Name="AfterBuild" DependsOnTargets="$(AfterBuildDependsOn)" />
+
+  <!-- inject CopyContent into the flow -->
+  <Target Name="CopyContent"
+          AfterTargets="CoreBuild"
+          BeforeTargets="CopyFilesToOutputDirectory"
+          Condition="'@(Content)'!=''">
+
+    <Copy
+        Condition="'%(Content.Publish)'=='true'"
+        DestinationFolder="$(OutDir)\%(Content.RecursiveDir)"
+        OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+        Retries="$(CopyRetryCount)"
+        RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+        SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+        SourceFiles="%(Content.FullPath)"
+        UseHardlinksIfPossible="$(CreateHardLinksForCopyAdditionalFilesIfPossible)">
+
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+
+    </Copy>
+
+  </Target>
+
+  <Target Name="CopyEmbeddedResources"
+          AfterTargets="CoreBuild"
+          BeforeTargets="CopyFilesToOutputDirectory"
+          Condition="'@(EmbeddedResource)'!=''">
+
+    <Copy
+        DestinationFolder="$(OutDir)\$(ModuleName)\%(EmbeddedResource.ModuleName)\%(EmbeddedResource.RecursiveDir)"
+        OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+        Retries="$(CopyRetryCount)"
+        RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+        SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+        SourceFiles="%(EmbeddedResource.FullPath)"
+        UseHardlinksIfPossible="$(CreateHardLinksForCopyAdditionalFilesIfPossible)">
+
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+
+    </Copy>
+
+  </Target>
+  
+  <!-- override the default Compile target -->
+  <Target Name="Compile"
+          Condition="'@(Compile)'!=''">
+
+    <Copy DestinationFolder="$(OutputPath)\$(ModuleName)\%(Compile.RecursiveDir)" 
+          OverwriteReadOnlyFiles="true" 
+          SkipUnchangedFiles="true"
+		  SourceFiles="%(Compile.FullPath)" />
+    
+  </Target>
+
+ 
+</Project>
